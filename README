@@ -1,0 +1,132 @@
+This project is intended to create a library which can be used to replace (in some circumstances) JSP and other templating engines.
+
+We believe that an true HTML page can contain enough information to be used to generate loops and other complex constructs without abusing the language, and that a true HTML page is a better choice for designing views than JSP.
+
+We have chosen the route of Convention-Over-Configuration to approach this problem.
+
+As an example, consider the following HTML:
+
+<html>
+<body>
+  <ol id="states" class="__loopOver">
+    <li class="__static">None</li>
+    <li id="_.capital"></li>
+  <ol>
+</body>
+</html>
+
+In this case, we would expect that an iterable object or array or Enumerable object named 'states' is available to the library, and the output would contain:
+
+<html>
+<body>
+  <ol id="states">
+    <li>None</li>
+    <li id="states[0].capital>Raleigh</li>
+    <li id="states[1].capital>Columbia</li>
+    <li id="states[2].capital>Des Moines</li>
+    <li ...>...</li>
+  </ol>
+</body>
+</html>
+
+Consider another example:
+
+<html>
+<body>
+  <form>
+    <table id="states">
+      <tbody>
+        <tr>
+          <td id="_.capital"><input/></td>
+        </tr>
+      </tbody>
+    </table>
+    <submit>
+  </form>
+</body>
+</html>
+
+In this second example, we should see the output:
+
+<html>
+<body>
+  <form>
+    <table id="states">
+      <tbody>
+        <tr>
+          <td id="states[0].capital"><input name="states[0].capital">Raleigh</input></td>
+          <td id="states[1].capital"><input name="states[1].capital">Columbia</input></td>
+          <td id="states[2].capital"><input name="states[2].capital">Des Moines</input></td>
+        </tr>
+      </tbody>
+    </table>
+    <submit>
+  </form>
+</body>
+</html>
+
+The only downside as far as data goes is the duplicated data between the tr@id and the input@name attributes. If we wish to remove either the @id or the @name attribute, we should be able to do so simply. Perhaps by adding a class '__dropAttr_id' or '__dropAttr_name'?
+
+
+1. The '_' variable
+  This variable always fills in the missing information in the current object path. An @id attribute will allow a nested element to add to the object path if it wishes. If so, any elements nested within would inherit the new object path.
+
+In the basic case, consider:
+
+<td id='_.capital'><input name='_'/></td>
+
+And:
+
+<td id='states_.capital'><input name='states_'/></td>
+
+In the context listed above, both the above snippets should generate:
+
+<td id='states[0].capital'><input name='states[0].capital'>Raleigh</input></td>
+
+The reason is two-fold. First, while generating valid HTML, most people will probably encouter @id conflicts if limited to '_.{name}'. Second, This makes it possible to refer to two different objects within nested loops.
+
+2. Filling in values
+  Any element which supports values will automatically be populated with the value of _.toString() UNLESS there is already a value specified. A specified value of $(VALUE) is the same as no value specified.
+
+3. Loop Indicies
+  In order for user to specify their own indicies, introduce the class '__index_X', where X is the desired name of the index. Then, a variable named X is available as an object.
+  All indicies have the following properties:
+    1. X.index
+    2. X.max
+  
+  In order for better loop control, the following classes are introduced:
+    1. __startIndex_X - instead of starting at index 0 (or initial key), start at index X
+    2. __stopIndex_X - instead of stopping at the end of the collection, stop at index X (or the end, whichever comes first)
+    3. __maxCount_X - instead of stopping at a particular index, stop when X objects have been processed
+
+
+4. Calculated values
+
+  Borrowing from JSP, we should support standard EL expressions, such as $(exp). However, the special variable '_' still must function exactly the same within $() as outside it.
+
+
+5. No IF statments?
+
+  Instead of supporting if statements, we should provide an inheritance model in which values or elements may be overridden. For example, consider the following superclass states.html:
+
+<div id="states">
+  <div id='_.titles'/>
+<div>
+
+And the subclass statesWithTitles.html:
+
+  <div id='states.titles'>Titles</div>
+
+Calling states.html should result in exactly the same code. However, calling statesWithTitles.html should result in:
+
+<div id="states">
+  <div id='states.titles'>Titles</div>
+</div>
+
+This is performed by specifying the full id for the div.
+
+Specifying the '__virtual' class on the 'titles' div would allow the element to be removed from the superclass output.
+
+6. Ids versus object paths:
+
+  I have no idea. They both seem to be useful, and obviously I've co-opted id's to support object paths. However, the inheritance model above confuses the two issues a bit.
